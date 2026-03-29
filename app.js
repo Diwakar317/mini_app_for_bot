@@ -12,6 +12,7 @@ const queryApiBase = new URLSearchParams(window.location.search).get("api_base")
 const apiBase = normalizeApiBase(queryApiBase || window.API_BASE_URL || "http://127.0.0.1:8000");
 
 let stream;
+let lastKnownLocation = null;
 
 initTelegramWebApp();
 initCamera().catch((err) => {
@@ -117,6 +118,8 @@ async function postAttendanceFrame(frameBlob, location) {
   form.append("image", frameBlob, "capture.jpg");
   form.append("lat", String(location.lat));
   form.append("lon", String(location.lon));
+  // Keep both keys for backend compatibility.
+  form.append("lng", String(location.lon));
 
   const telegramId = tg?.initDataUnsafe?.user?.id;
   if (telegramId) {
@@ -153,22 +156,66 @@ async function getCurrentLocation() {
 
   setStatus("Getting live location permission...");
 
-  return await new Promise((resolve, reject) => {
+  try {
+    const freshPosition = await getPosition({
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+
+    lastKnownLocation = {
+      lat: freshPosition.coords.latitude,
+      lon: freshPosition.coords.longitude,
+    };
+
+    return lastKnownLocation;
+  } catch (firstError) {
+    try {
+      const fallbackPosition = await getPosition({
+        enableHighAccuracy: false,
+        timeout: 12000,
+        maximumAge: 120000,
+      });
+
+      lastKnownLocation = {
+        lat: fallbackPosition.coords.latitude,
+        lon: fallbackPosition.coords.longitude,
+      };
+
+      return lastKnownLocation;
+    } catch (secondError) {
+      if (lastKnownLocation) {
+        setStatus("Using recently cached location.");
+        return lastKnownLocation;
+      }
+
+      throw secondError instanceof Error
+        ? secondError
+        : firstError instanceof Error
+          ? firstError
+          : new Error("Location is required. Please allow location and try again.");
+    }
+  }
+}
+
+function getPosition(options) {
+  return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        });
+      resolve,
+      (error) => {
+        if (error?.code === error.PERMISSION_DENIED) {
+          reject(new Error("Location permission denied. Please allow location and try again."));
+          return;
+        }
+
+        if (error?.code === error.TIMEOUT) {
+          reject(new Error("Location request timed out. Please move to an open area and try again."));
+          return;
+        }
+
+        reject(new Error("Unable to fetch location. Please try again."));
       },
-      () => {
-        reject(new Error("Location is required. Please allow location and try again."));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
+      options,
     );
   });
 }
