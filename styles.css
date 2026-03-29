@@ -1,11 +1,11 @@
 :root {
-  --bg: #0f1724;
-  --card: #17253a;
-  --text: #e6edf7;
-  --muted: #9db0ca;
-  --accent: #2dd4bf;
-  --danger: #fb7185;
-  --border: rgba(255, 255, 255, 0.14);
+  --bg: #f3eee6;
+  --card: #fcfaf7;
+  --ink: #142321;
+  --muted: #4d635d;
+  --accent: #0b8b6a;
+  --accent-press: #087255;
+  --danger: #a7262b;
 }
 
 * {
@@ -14,47 +14,44 @@
 
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  color: var(--text);
-  background: radial-gradient(circle at top right, #1f3456 0%, var(--bg) 45%, #0a1019 100%);
   min-height: 100vh;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 15%, #e8f4ef 0, transparent 38%),
+    radial-gradient(circle at 80% 0, #f8d6ba 0, transparent 35%),
+    var(--bg);
 }
 
-.page {
-  max-width: 680px;
+.app {
+  max-width: 760px;
   margin: 0 auto;
   padding: 20px 16px 28px;
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 1.6rem;
+h1 {
+  margin: 6px 0 4px;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: 0.02em;
 }
 
 .subtitle {
-  margin: 6px 0 0;
+  margin: 0 0 14px;
   color: var(--muted);
-}
-
-.camera-card {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  backdrop-filter: blur(4px);
 }
 
 .camera-shell {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 14px;
+  border-radius: 20px;
   overflow: hidden;
-  background: #050a12;
+  border: 3px solid #d4e5dd;
+  background: #0d1715;
+  box-shadow: 0 14px 32px rgba(20, 35, 33, 0.2);
 }
 
-video {
+#cameraVideo {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -63,71 +60,68 @@ video {
 
 .face-oval {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  width: min(62%, 340px);
+  aspect-ratio: 0.75 / 1;
+  transform: translate(-50%, -50%);
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.42);
   pointer-events: none;
 }
 
-.face-oval::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 44%;
-  height: 64%;
-  transform: translate(-50%, -50%);
-  border: 3px solid rgba(45, 212, 191, 0.95);
-  border-radius: 50%;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.22), 0 0 20px rgba(45, 212, 191, 0.4);
-}
-
-.loading-overlay {
+.loading {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(3, 10, 18, 0.66);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #ffffff;
+  background: rgba(6, 10, 9, 0.66);
 }
 
 .hidden {
   display: none;
 }
 
+#markBtn {
+  width: 100%;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f8fffc;
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform 100ms ease, background-color 160ms ease;
+}
+
+#markBtn:active {
+  transform: translateY(1px);
+  background: var(--accent-press);
+}
+
+#markBtn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .status {
-  margin: 12px 0;
+  min-height: 1.4em;
+  margin: 10px 2px 0;
   color: var(--muted);
-  min-height: 20px;
 }
 
 .status.error {
   color: var(--danger);
 }
 
-.status.success {
-  color: var(--accent);
-}
-
-.primary-btn {
-  width: 100%;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #022d29;
-  background: var(--accent);
-  cursor: pointer;
-}
-
-.primary-btn[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 @media (max-width: 420px) {
-  .header h1 {
-    font-size: 1.35rem;
+  .app {
+    padding-top: 14px;
   }
 }

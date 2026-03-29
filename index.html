@@ -1,36 +1,29 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Attendance Capture</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  </head>
-  <body>
-    <main class="page">
-      <header class="header">
-        <h1>Mark Attendance</h1>
-        <p class="subtitle">Align your face in the oval and tap the button.</p>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance Camera Capture</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <h1>Face Capture</h1>
+    <p class="subtitle">Align your face inside the oval and tap Mark Attendance.</p>
 
-      <section class="camera-card">
-        <div class="camera-shell" aria-label="Camera preview with face alignment guide">
-          <video id="cameraVideo" playsinline autoplay muted></video>
-          <div class="face-oval" aria-hidden="true"></div>
-          <div id="loadingOverlay" class="loading-overlay hidden">Processing...</div>
-        </div>
-
-        <p id="statusText" class="status">Camera is starting...</p>
-
-        <button id="markAttendanceBtn" class="primary-btn" type="button" disabled>
-          Mark Attendance
-        </button>
-      </section>
-    </main>
+    <section class="camera-shell" aria-label="Camera preview">
+      <video id="cameraVideo" autoplay playsinline muted></video>
+      <div class="face-oval" aria-hidden="true"></div>
+      <div id="loadingOverlay" class="loading hidden">Processing...</div>
+    </section>
 
     <canvas id="captureCanvas" width="640" height="480" hidden></canvas>
 
-    <script type="module" src="./app.js"></script>
-  </body>
+    <button id="markBtn" type="button">Mark Attendance</button>
+    <p id="statusText" class="status">Initializing camera...</p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
 </html>
