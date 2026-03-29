@@ -10,9 +10,10 @@ const loadingOverlayEl = document.getElementById("loadingOverlay");
 const tg = window.Telegram?.WebApp;
 const queryApiBase = new URLSearchParams(window.location.search).get("api_base");
 const apiBase = normalizeApiBase(queryApiBase || window.API_BASE_URL || "http://127.0.0.1:8000");
+const LOCATION_CACHE_KEY = "attendance:lastKnownLocation";
 
 let stream;
-let lastKnownLocation = null;
+let lastKnownLocation = readCachedLocation();
 
 initTelegramWebApp();
 initCamera().catch((err) => {
@@ -150,11 +151,21 @@ function normalizeApiBase(value) {
 }
 
 async function getCurrentLocation() {
-  if (!navigator.geolocation) {
-    throw new Error("Location is not supported on this device.");
+  setStatus("Getting live location permission...");
+
+  const telegramLocation = await getTelegramLocation();
+  if (telegramLocation) {
+    updateCachedLocation(telegramLocation);
+    return telegramLocation;
   }
 
-  setStatus("Getting live location permission...");
+  if (!navigator.geolocation) {
+    if (lastKnownLocation) {
+      setStatus("Using recently cached location.");
+      return lastKnownLocation;
+    }
+    throw new Error("Location is unavailable. Please enable Telegram location access and try again.");
+  }
 
   try {
     const freshPosition = await getPosition({
@@ -163,12 +174,13 @@ async function getCurrentLocation() {
       maximumAge: 0,
     });
 
-    lastKnownLocation = {
+    const freshLocation = {
       lat: freshPosition.coords.latitude,
       lon: freshPosition.coords.longitude,
     };
 
-    return lastKnownLocation;
+    updateCachedLocation(freshLocation);
+    return freshLocation;
   } catch (firstError) {
     try {
       const fallbackPosition = await getPosition({
@@ -177,12 +189,13 @@ async function getCurrentLocation() {
         maximumAge: 120000,
       });
 
-      lastKnownLocation = {
+      const fallbackLocation = {
         lat: fallbackPosition.coords.latitude,
         lon: fallbackPosition.coords.longitude,
       };
 
-      return lastKnownLocation;
+      updateCachedLocation(fallbackLocation);
+      return fallbackLocation;
     } catch (secondError) {
       if (lastKnownLocation) {
         setStatus("Using recently cached location.");
@@ -203,13 +216,18 @@ function getPosition(options) {
     navigator.geolocation.getCurrentPosition(
       resolve,
       (error) => {
-        if (error?.code === error.PERMISSION_DENIED) {
+        if (error?.code === 1) {
           reject(new Error("Location permission denied. Please allow location and try again."));
           return;
         }
 
-        if (error?.code === error.TIMEOUT) {
+        if (error?.code === 3) {
           reject(new Error("Location request timed out. Please move to an open area and try again."));
+          return;
+        }
+
+        if (error?.code === 2) {
+          reject(new Error("Location is temporarily unavailable. Try again in a few seconds."));
           return;
         }
 
@@ -218,6 +236,100 @@ function getPosition(options) {
       options,
     );
   });
+}
+
+async function getTelegramLocation() {
+  const locationManager = tg?.LocationManager;
+  if (!locationManager) {
+    return null;
+  }
+
+  setStatus("Requesting Telegram location...");
+
+  try {
+    await initTelegramLocationManager(locationManager);
+  } catch {
+    return null;
+  }
+
+  if (!locationManager.isLocationAvailable) {
+    return null;
+  }
+
+  try {
+    const locationData = await new Promise((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        reject(new Error("Telegram location request timed out."));
+      }, 15000);
+
+      locationManager.getLocation((result) => {
+        window.clearTimeout(timeoutId);
+
+        if (!result) {
+          reject(new Error("Telegram location access was not granted."));
+          return;
+        }
+
+        if (!Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
+          reject(new Error("Telegram returned an invalid location."));
+          return;
+        }
+
+        resolve(result);
+      });
+    });
+
+    return {
+      lat: locationData.latitude,
+      lon: locationData.longitude,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function initTelegramLocationManager(locationManager) {
+  return new Promise((resolve) => {
+    if (locationManager.isInited) {
+      resolve();
+      return;
+    }
+
+    locationManager.init(() => {
+      resolve();
+    });
+  });
+}
+
+function updateCachedLocation(location) {
+  lastKnownLocation = location;
+
+  try {
+    window.localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(location));
+  } catch {
+    // Ignore storage failures in restricted webviews.
+  }
+}
+
+function readCachedLocation() {
+  try {
+    const raw = window.localStorage.getItem(LOCATION_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Number.isFinite(parsed?.lat) || !Number.isFinite(parsed?.lon)) {
+      return null;
+    }
+
+    return {
+      lat: parsed.lat,
+      lon: parsed.lon,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function setProcessing(isProcessing, message = "") {
